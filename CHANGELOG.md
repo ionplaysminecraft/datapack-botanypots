@@ -6,6 +6,7 @@
 
 **Merged pull requests:**
 
+- Create release 0.1.1 [\#3](https://github.com/ionplaysminecraft/datapack-botanypots/pull/3) ([joernott](https://github.com/joernott))
 - Create release 0.1.0 [\#2](https://github.com/ionplaysminecraft/datapack-botanypots/pull/2) ([joernott](https://github.com/joernott))
 
 
