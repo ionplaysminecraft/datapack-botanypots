@@ -77,26 +77,8 @@ jobs:
           cd release
           git config --global user.email "no-reply@explorerflotte.de"
           git config --global user.name "${{ github.actor }}"
-          git checkout main
-          if [ '${{ steps.branch.outputs.branch }}' != 'main' ]; then
-            git pull
-            git checkout '${{ steps.branch.outputs.branch }}'
-            git merge main
-            STATUS=$(git status -s)
-            if [ -n "${STATUS}" ]; then
-              git add --all
-              git commit -m "Merge main"
-              git push
-            fi
-            git checkout main
-            git merge '${{ steps.branch.outputs.branch }}'
-          fi
           cp ../CHANGELOG.md .
-          git status -s
-          git add --all
-          git commit -m "Update changelog"
-          git push
-          
+ 
       - name: 'Create branch and Pull Request'
         uses: 'peter-evans/create-pull-request@v7'
         with:
