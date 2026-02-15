@@ -1,0 +1,69 @@
+name: 'merge_release'
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Get data'
+        id: data
+        env:
+          TITLE: ${{github.event.pull_request.title}}
+        run: |
+          # Get data
+          if [[ "${TITLE}" != "Update github-actions to "* ]]; then
+            echo "skip=true" | tee -a "${GITHUB_OUTPUT}"
+          else
+            # shellcheck disable=SC2001
+            VERSION=$(echo "${TITLE}"|sed -e 's|.* ||')
+            MAJOR=$(echo "${VERSION}"|awk -F '.' '{print $1}')
+            MINOR=$(echo "${VERSION}"|awk -F '.' '{print $2}')
+            PATCH=$(echo "${VERSION}"|awk -F '.' '{print $3}')
+            echo "version=${VERSION}" | tee -a "${GITHUB_OUTPUT}"
+            echo "major=${MAJOR}" | tee -a "${GITHUB_OUTPUT}"
+            echo "minor=${MINOR}" | tee -a "${GITHUB_OUTPUT}"
+            echo "patch=${PATCH}" | tee -a "${GITHUB_OUTPUT}"
+          fi
+
+      - name: 'Checkout repo'
+        if: ${{ steps.data.outputs.skip != 'true' }}
+        uses: 'actions/checkout@v5'
+        with:
+          ref: 'main'
+          path: 'release'
+          fetch-depth: 0
+
+      - name: 'Tagging'
+        if: ${{ steps.data.outputs.skip != 'true' }}
+        run: |
+          # Tagging
+          git config --global user.email "no-reply@explorerflotte.de"
+          git config --global user.name "${{ github.actor }}"
+          cd release
+          VERSION="${{steps.data.outputs.major}}.${{steps.data.outputs.minor}}.${{steps.data.outputs.patch}}"
+          git tag -a "v${VERSION}" -m "Release v${VERSION}"
+          git push --tags
+
+      - name: Run PackSquash
+        uses: ComunidadAylas/PackSquash-action@v4
+        with:
+          packsquash_version: latest
+          options: |
+            pack_directory = 'release'
+            output_file_path = "1.21.1_botanypots_recipes-${{steps.data.outputs.major}}.${{steps.data.outputs.minor}}.${{steps.data.outputs.patch}}.zip"
+
+      - uses: 'ncipollo/release-action@v1'
+        if: ${{ steps.data.outputs.skip != 'true' }}
+        with:
+          token: ${{github.token}}
+          bodyFile: 'release/CHANGELOG.md'
+          tag: "v${{steps.data.outputs.major}}.${{steps.data.outputs.minor}}.${{steps.data.outputs.patch}}"
+          artifacts: "1.21.1_botanypots_recipes-${{steps.data.outputs.major}}.${{steps.data.outputs.minor}}.${{steps.data.outputs.patch}}.zip"

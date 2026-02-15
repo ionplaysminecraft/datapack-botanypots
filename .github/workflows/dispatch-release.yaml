@@ -1,0 +1,112 @@
+name: Dispatch Release
+# Optimize the data pack and create a release when a new tag is pushed.
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      feature_branch:
+        type: string
+        required: false
+        description: 'Name of the feature branch, if empty, use the current branch'
+        default: ''
+      major:
+        type: string
+        required: true
+        description: 'Major version number (X.?.?)'
+      minor:
+        type: string
+        required: true
+        description: 'Minor version number (?.X.?)'
+      patch:
+        type: string
+        required: true
+        description: 'Patch version number (?.?.X)'
+      reviewer:
+        type: choice
+        required: true
+        description: 'Who should review the PR'
+        options:
+          - joernott
+
+jobs:
+  prepare_release:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Get branch'
+        id: branch
+        run: |
+          # Get branch
+          BRANCH='${{ inputs.feature_branch }}'
+          if [ -z "${BRANCH}" ]; then
+            BRANCH="${GITHUB_REF}"
+          fi
+          echo "branch=${BRANCH}" >>"${GITHUB_OUTPUT}"
+
+      - name: 'Checkout repo'
+        uses: 'actions/checkout@v5'
+        with:
+          ref: '${{ steps.branch.outputs.branch }}'
+          path: 'release'
+          fetch-depth: 0
+
+      - name: 'Validate version'
+        run: |
+          # Validate version
+          cd release
+          CHECK=$(git tag --list|grep "v${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}}"||true)
+          if [ -n "${CHECK}" ]; then
+            cat <<EOF
+          *******************************************************************
+          * Tag v${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}} already exists. Aborting
+          *******************************************************************
+          EOF
+            exit 1
+          fi
+
+      - name: Generate release changelog
+        uses: janheinrichmerker/action-github-changelog-generator@v2
+        with:
+          verbose: true
+          output: CHANGELOG.md
+
+      - name: 'Create release'
+        run: |
+          # Merge main branch
+          cd release
+          git config --global user.email "no-reply@explorerflotte.de"
+          git config --global user.name "${{ github.actor }}"
+          git checkout main
+          git pull
+          git checkout '${{ steps.branch.outputs.branch }}'
+          git merge main
+          STATUS=$(git status -s)
+          if [ -n "${STATUS}" ]; then
+            git add --all
+            git commit -m "Merge main"
+          fi
+          cp ../CHANGELOG.md .
+          STATUS=$(git status -s)
+          if [ -n "${STATUS}" ]; then
+            git add --all
+            git commit -m "Update changelog"
+          fi
+          git checkout main
+          git merge '${{ steps.branch.outputs.branch }}'
+
+      - name: 'Generate a token'
+        id: generate_token
+        uses: 'actions/create-github-app-token@v2'
+        with:
+          app-id: ${{ secrets.ACTIONS_RELEASE_APP_ID }}
+          private-key: ${{ secrets.ACTIONS_RELEASE_APP_PRIVATE_KEY }}
+
+      - name: 'Create branch and Pull Request'
+        uses: 'peter-evans/create-pull-request@v7'
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          path: 'github-actions'
+          branch: 'release_${{inputs.major}}_${{inputs.minor}}_${{inputs.patch}}'
+          assignees: '${{inputs.reviewer}}'
+          reviewers: '${{inputs.reviewer}}'
+          title: 'Update github-actions to ${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}}'
