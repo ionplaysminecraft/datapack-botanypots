@@ -94,19 +94,12 @@ jobs:
           git checkout main
           git merge '${{ steps.branch.outputs.branch }}'
 
-      - name: 'Generate a token'
-        id: generate_token
-        uses: 'actions/create-github-app-token@v2'
-        with:
-          app-id: ${{ secrets.ACTIONS_RELEASE_APP_ID }}
-          private-key: ${{ secrets.ACTIONS_RELEASE_APP_PRIVATE_KEY }}
-
       - name: 'Create branch and Pull Request'
         uses: 'peter-evans/create-pull-request@v7'
         with:
-          token: ${{ steps.generate_token.outputs.token }}
-          path: 'github-actions'
+          token: ${{ secrets.RELEASE_PAT }}
+          path: 'release'
           branch: 'release_${{inputs.major}}_${{inputs.minor}}_${{inputs.patch}}'
           assignees: '${{inputs.reviewer}}'
           reviewers: '${{inputs.reviewer}}'
-          title: 'Update github-actions to ${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}}'
+          title: 'Create release ${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}}'
