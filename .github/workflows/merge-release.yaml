@@ -19,7 +19,7 @@ jobs:
           TITLE: ${{github.event.pull_request.title}}
         run: |
           # Get data
-          if [[ "${TITLE}" != "Update github-actions to "* ]]; then
+          if [[ "${TITLE}" != "Create release "* ]]; then
             echo "skip=true" | tee -a "${GITHUB_OUTPUT}"
           else
             # shellcheck disable=SC2001
@@ -53,6 +53,7 @@ jobs:
           git push --tags
 
       - name: Run PackSquash
+        if: ${{ steps.data.outputs.skip != 'true' }}
         uses: ComunidadAylas/PackSquash-action@v4
         with:
           packsquash_version: latest
