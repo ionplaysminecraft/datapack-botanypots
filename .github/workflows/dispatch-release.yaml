@@ -86,5 +86,4 @@ jobs:
           path: 'release'
           branch: 'release_${{inputs.major}}_${{inputs.minor}}_${{inputs.patch}}'
           assignees: '${{inputs.reviewer}}'
-          reviewers: '${{inputs.reviewer}}'
           title: 'Create release ${{inputs.major}}.${{inputs.minor}}.${{inputs.patch}}'
